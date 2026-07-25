@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, CLAUDE_MODEL } from "./claude";
 import { TranslationInput } from "./data";
+import { checkIntegrity, IntegrityCheckResult } from "./integrity";
 
 export interface TranslationResult {
   key: string;
@@ -8,6 +9,15 @@ export interface TranslationResult {
   comment: string;
   translation: string;
   reasoning: string;
+  integrityCheck?: IntegrityCheckResult;
+  selfReview?: {
+    verdict: "correct" | "weak" | "incorrect";
+    confidence: number;
+    issueType: string;
+    explanation: string;
+    needsHumanReview: boolean;
+    error?: string;
+  };
   error?: string;
 }
 
@@ -89,6 +99,7 @@ Translate this string into Spanish, using the developer context to resolve any a
     }
 
     const args = toolUse.input as { translation: string; reasoning: string };
+    const integrityCheck = checkIntegrity(input.source, args.translation);
 
     return {
       key: input.key,
@@ -96,6 +107,7 @@ Translate this string into Spanish, using the developer context to resolve any a
       comment: input.comment,
       translation: args.translation,
       reasoning: args.reasoning,
+      integrityCheck,
     };
   } catch (err) {
     // Partial-failure handling: one string failing (rate limit, network
@@ -118,6 +130,10 @@ export async function translateBatch(
   inputs: TranslationInput[]
 ): Promise<TranslationResult[]> {
   // Run independently, in parallel, so one failure never blocks the rest.
+  // Self-review (scoring our own fresh translations) is deliberately NOT
+  // done inside this function — it's orchestrated one level up, in the API
+  // route, to avoid a circular import between translate.ts and score.ts
+  // (score.ts already needs translateString for its own reference-check).
   const results = await Promise.all(inputs.map((input) => translateString(input)));
   return results;
 }

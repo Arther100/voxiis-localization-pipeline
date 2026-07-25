@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { TranslationTable } from "@/components/TranslationTable";
 import { ScoringTable } from "@/components/ScoringTable";
 import { TableSkeleton } from "@/components/Skeleton";
+import { SummaryBar } from "@/components/SummaryBar";
 import type { TranslationResult, ScoringResult } from "@/lib/types";
 
 export default function Home() {
@@ -26,7 +27,14 @@ export default function Home() {
       .catch(() => setScoreError(true));
   }, []);
 
-  const flaggedCount = scores?.filter((s) => s.needsHumanReview).length ?? 0;
+  const scoreFlagged = scores?.filter((s) => s.needsHumanReview).length ?? 0;
+  const selfFlagged =
+    translations?.filter((t) => t.selfReview?.needsHumanReview).length ?? 0;
+  const integrityFailed =
+    translations?.filter((t) => t.integrityCheck && !t.integrityCheck.passed)
+      .length ?? 0;
+
+  const ready = translations !== null && scores !== null;
 
   return (
     <main className="min-h-screen">
@@ -44,19 +52,33 @@ export default function Home() {
             Ten UI strings translated into Spanish using their real product
             context, and eight existing translations reviewed against an
             objective, explained scoring scheme — both built on the same
-            underlying logic, so a short English word never gets the wrong
-            sense twice.
+            underlying logic, and the fresh translations are held to that
+            same bar too, not just the legacy ones.
           </p>
         </div>
       </header>
 
-      <section className="max-w-5xl mx-auto px-6 py-14">
+      <section className="max-w-5xl mx-auto px-6 pt-12">
+        {ready ? (
+          <SummaryBar
+            totalTranslations={translations!.length}
+            selfFlagged={selfFlagged}
+            integrityFailed={integrityFailed}
+            totalScored={scores!.length}
+            scoreFlagged={scoreFlagged}
+          />
+        ) : (
+          <div className="border border-[var(--color-rule)] rounded-lg bg-white px-6 py-6 mb-10 animate-pulse h-24" />
+        )}
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 pb-14">
         <div className="flex items-baseline justify-between mb-6">
           <h2 className="font-serif text-2xl font-semibold">
             Part 1 — Context-aware translation
           </h2>
           <span className="text-sm text-[var(--color-ink-soft)]">
-            10 strings
+            10 strings, each self-reviewed
           </span>
         </div>
         {translationError ? (
@@ -79,7 +101,7 @@ export default function Home() {
         </div>
         {scores && (
           <p className="text-sm text-[var(--color-ink-soft)] mb-6">
-            {flaggedCount} of {scores.length} flagged for human review.
+            {scoreFlagged} of {scores.length} flagged for human review.
           </p>
         )}
         {scoreError ? (
