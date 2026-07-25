@@ -41,7 +41,7 @@ export function SummaryBar({
 }: SummaryBarProps) {
   return (
     <div className="border border-[var(--color-rule)] rounded-lg bg-white px-6 py-6 mb-10">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-5">
         <Stat value={totalTranslations} label="Strings translated" />
         <Stat
           value={selfFlagged}
