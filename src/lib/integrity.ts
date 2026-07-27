@@ -1,10 +1,4 @@
-// Deterministic checks — no AI involved. Per the "About Voxiis" context doc:
-// "Some parts of localization are deterministic — tag integrity, variable
-// preservation, glossary compliance — and a well-built pipeline can get
-// those right every time." This is that part of the pipeline.
 
-// Matches {{variable}}, {variable}, %s, %1$s, and {0}-style placeholders —
-// the common patterns across i18n frameworks (i18next, ICU, printf-style).
 const PLACEHOLDER_PATTERNS = [
   /\{\{[^}]+\}\}/g, // {{count}}
   /\{[^}]+\}/g, // {count} or {0}

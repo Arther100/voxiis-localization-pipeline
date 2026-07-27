@@ -1,6 +1,4 @@
-// Source data for the Voxiis Round 2 task.
-// Part 1: strings needing a fresh, context-aware translation.
-// Part 2: strings that already have a (possibly flawed) translation to be scored.
+
 
 export interface TranslationInput {
   key: string;
@@ -78,10 +76,6 @@ export const PART2_STRINGS: ScoringInput[] = [
   { key: "report.button.export", source: "Export", existingTranslation: "Exportar" },
 ];
 
-// Comments for Part 2 strings, looked up from Part 1 by key where the same
-// key appears in both batches. This is what lets the scorer judge each
-// existing translation against the SAME context a fresh translation would
-// have used, rather than scoring the Spanish word in a vacuum.
 export function getCommentForKey(key: string): string {
   const match = PART1_STRINGS.find((s) => s.key === key);
   return match?.comment ?? "No additional context available for this key.";

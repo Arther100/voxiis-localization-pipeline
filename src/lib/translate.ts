@@ -21,11 +21,7 @@ export interface TranslationResult {
   error?: string;
 }
 
-// The tool definition forces Claude to return a strict, parseable shape
-// every time — no free-text response to regex apart, no risk of a
-// slightly-different phrasing breaking downstream code. This is the same
-// production concern flagged in Round 1 (the fragile text/tool_use
-// parsing in support_triage_agent.py) applied constructively here.
+
 const TRANSLATE_TOOL = {
   name: "submit_translation",
   description:
@@ -84,10 +80,7 @@ Translate this string into Spanish, using the developer context to resolve any a
     );
 
     if (!toolUse) {
-      // Claude did not call the tool at all — surface this as a visible
-      // error in the output rather than crashing the whole batch or
-      // silently returning an empty string. A non-technical reviewer
-      // should be able to see exactly which string failed and why.
+     
       return {
         key: input.key,
         source: input.source,
@@ -110,9 +103,6 @@ Translate this string into Spanish, using the developer context to resolve any a
       integrityCheck,
     };
   } catch (err) {
-    // Partial-failure handling: one string failing (rate limit, network
-    // blip, malformed response) should never take down the other nine.
-    // Every failure is logged and surfaced, never swallowed.
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`Translation failed for key "${input.key}":`, message);
     return {
@@ -129,11 +119,6 @@ Translate this string into Spanish, using the developer context to resolve any a
 export async function translateBatch(
   inputs: TranslationInput[]
 ): Promise<TranslationResult[]> {
-  // Run independently, in parallel, so one failure never blocks the rest.
-  // Self-review (scoring our own fresh translations) is deliberately NOT
-  // done inside this function — it's orchestrated one level up, in the API
-  // route, to avoid a circular import between translate.ts and score.ts
-  // (score.ts already needs translateString for its own reference-check).
   const results = await Promise.all(inputs.map((input) => translateString(input)));
   return results;
 }

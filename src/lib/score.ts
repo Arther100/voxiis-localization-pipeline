@@ -74,11 +74,6 @@ Be especially alert to short, ambiguous English words (like "Due", "Post", "Open
 
 Use the tool provided to submit a structured verdict, confidence score, issue category, and a plain-English explanation a non-technical reviewer can trust without needing to read Spanish themselves.`;
 
-// Shared core: takes a key/source/comment/translation and returns a raw
-// verdict. Both the "score an existing legacy translation" path (Part 2)
-// and the "double-check our own fresh translation" path (Part 1 self-review)
-// call this same function, so the two can never silently drift into
-// different quality bars over time.
 async function runScoringCall(
   key: string,
   comment: string,
@@ -121,15 +116,7 @@ export async function scoreTranslation(
   const comment = getCommentForKey(input.key);
 
   try {
-    // Three things run in parallel:
-    // 1. The primary scoring call (the verdict we actually report)
-    // 2. An independent reference translation (does OUR pipeline agree
-    //    on what the translation should be, as a second signal)
-    // 3. A SECOND, independent scoring call — same inputs, fresh call,
-    //    no shared state — purely to check whether Claude's verdict is
-    //    consistent with itself on repeat, rather than a one-off draw.
-    //    A system whose entire premise is "objective, not a human's
-    //    opinion" should be able to show its own judgment is stable.
+   
     const [result, reference, repeatResult] = await Promise.all([
       runScoringCall(input.key, comment, input.source, input.existingTranslation),
       translateString({ key: input.key, comment, source: input.source }),
@@ -154,12 +141,6 @@ export async function scoreTranslation(
     const consistentOnRepeat =
       "error" in repeatResult ? undefined : repeatResult.verdict === result.verdict;
 
-    // Escalation rule: anything not cleanly "correct", anything the model
-    // itself is not confident about, OR anything that flips verdict on a
-    // repeat call, gets flagged for a human to look at rather than
-    // silently trusting a single AI pass as final. This mirrors Voxiis's
-    // own stated philosophy — deterministic parts handled automatically,
-    // judgment calls (and anything unstable) routed to a human.
     const needsHumanReview =
       result.verdict !== "correct" ||
       result.confidence < 85 ||
@@ -202,12 +183,6 @@ export async function scoreBatch(
   const results = await Promise.all(inputs.map((input) => scoreTranslation(input)));
   return results;
 }
-
-// --- Self-review path for Part 1 ---
-// Runs a fresh translation back through the exact same scoring core used
-// for legacy translations. This closes the loop: the pipeline doesn't just
-// judge OTHER people's old translations by this bar, it holds its own
-// freshly-generated output to the identical standard.
 
 export interface SelfReview {
   verdict: Verdict;
