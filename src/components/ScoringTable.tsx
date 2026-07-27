@@ -1,147 +1,180 @@
 import { ScoringResult, Verdict, IssueType } from "@/lib/score";
 
-const VERDICT_STYLE: Record<Verdict, { label: string; text: string; bg: string }> = {
+const VERDICT: Record<
+  Verdict,
+  { label: string; text: string; bg: string; border: string }
+> = {
   correct: {
     label: "Correct",
     text: "var(--color-correct)",
     bg: "var(--color-correct-bg)",
+    border: "var(--color-correct)",
   },
   weak: {
-    label: "Weak",
+    label: "Weak — needs review",
     text: "var(--color-weak)",
     bg: "var(--color-weak-bg)",
+    border: "var(--color-weak)",
   },
   incorrect: {
     label: "Incorrect",
     text: "var(--color-incorrect)",
     bg: "var(--color-incorrect-bg)",
+    border: "var(--color-incorrect)",
   },
 };
 
 const ISSUE_LABEL: Record<IssueType, string> = {
-  wrong_sense: "Wrong sense of an ambiguous word",
-  wrong_part_of_speech: "Wrong part of speech",
-  awkward_unnatural: "Awkward / unnatural phrasing",
-  none: "No issue",
+  wrong_sense: "Wrong meaning of an ambiguous word",
+  wrong_part_of_speech: "Wrong word type (e.g. noun vs verb)",
+  awkward_unnatural: "Awkward or unnatural phrasing",
+  none: "No issue found",
 };
 
-// Fixed grid template on larger screens for clean alignment; stacks to a
-// single column on narrow viewports so nothing overflows or gets clipped.
-const ROW_GRID =
-  "grid grid-cols-1 lg:grid-cols-[220px_190px_150px_1fr] gap-2 lg:gap-5";
+function ScoreCard({ r }: { r: ScoringResult }) {
+  const style = r.error
+    ? {
+        label: "Failed",
+        text: "var(--color-incorrect)",
+        bg: "var(--color-incorrect-bg)",
+        border: "var(--color-incorrect)",
+      }
+    : VERDICT[r.verdict];
 
-function VerdictBadge({ verdict }: { verdict: Verdict }) {
-  const s = VERDICT_STYLE[verdict];
   return (
-    <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide whitespace-nowrap"
-      style={{ color: s.text, background: s.bg }}
+    <article
+      className={`rounded-2xl border border-[var(--color-rule)] bg-white overflow-hidden ${
+        r.needsHumanReview ? "shadow-sm" : ""
+      }`}
+      style={{ borderLeftWidth: 4, borderLeftColor: style.border }}
     >
-      {s.label}
-    </span>
-  );
-}
-
-export function ScoringTable({ results }: { results: ScoringResult[] }) {
-  return (
-    <div className="border border-[var(--color-rule)] rounded-lg overflow-hidden bg-white">
-      {/* Header row — desktop only; a stacked mobile layout doesn't need
-          column labels since content becomes self-describing per row. */}
-      <div className="hidden lg:grid grid-cols-[220px_190px_150px_1fr] gap-5 px-6 py-3 bg-[#f7f5f0] border-b border-[var(--color-rule)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-        <div>Key &amp; context</div>
-        <div>Existing translation</div>
-        <div>Verdict</div>
-        <div>Explanation</div>
+      <div className="px-5 pt-4 pb-3 flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
+            style={{ color: style.text, background: style.bg }}
+          >
+            {style.label}
+          </span>
+          {!r.error && (
+            <span className="text-xs text-[var(--color-ink-soft)]">
+              {r.confidence}% sure
+            </span>
+          )}
+        </div>
+        <code className="text-[11px] text-[var(--color-ink-soft)] font-mono truncate max-w-[200px]">
+          {r.key}
+        </code>
       </div>
 
-      {results.map((r, i) => (
-        <div
-          key={r.key}
-          className={`px-6 py-5 ${
-            i !== results.length - 1 ? "border-b border-[var(--color-rule)]" : ""
-          } ${r.needsHumanReview ? "bg-[#fffdf9]" : ""}`}
-        >
-          <div className={ROW_GRID}>
-            {/* Column 1: key + context */}
-            <div className="min-w-0">
-              <div className="font-mono text-[13px] text-[var(--color-ink-soft)] break-all">
-                {r.key}
-              </div>
-              <div className="mt-1 text-sm text-[var(--color-ink-soft)] italic">
-                {r.comment}
-              </div>
-            </div>
+      <div className="px-5 pb-2">
+        <p className="text-xs text-[var(--color-ink-soft)]">
+          <span className="font-semibold text-[var(--color-ink)]">Where it&apos;s used: </span>
+          {r.comment}
+        </p>
+      </div>
 
-            {/* Column 2: existing translation + reference */}
-            <div className="min-w-0">
-              <div className="text-sm text-[var(--color-ink-soft)]">
-                {r.source} →{" "}
-                <span className="font-serif text-base text-[var(--color-ink)]">
-                  {r.existingTranslation}
-                </span>
-              </div>
-              {r.referenceTranslation &&
-                r.referenceTranslation.toLowerCase() !==
-                  r.existingTranslation.toLowerCase() && (
-                  <div className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                    Independent reference:{" "}
-                    <span className="font-mono">{r.referenceTranslation}</span>
-                  </div>
-                )}
-            </div>
+      <div className="mx-5 mb-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 sm:gap-4 items-center rounded-xl bg-[var(--color-paper)] px-4 py-4">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)] mb-1">
+            English
+          </div>
+          <div className="text-xl font-semibold">{r.source}</div>
+        </div>
+        <div className="hidden sm:block text-[var(--color-ink-soft)] text-lg font-light" aria-hidden>
+          →
+        </div>
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)] mb-1">
+            Existing Spanish
+          </div>
+          <div className="text-xl font-semibold">{r.existingTranslation}</div>
+        </div>
+      </div>
 
-            {/* Column 3: verdict badge + confidence */}
-            <div className="min-w-0">
-              <VerdictBadge verdict={r.verdict} />
-              <div className="mt-1.5 text-xs text-[var(--color-ink-soft)]">
-                {r.confidence}% confidence
-              </div>
+      {!r.error &&
+        r.referenceTranslation &&
+        r.referenceTranslation.toLowerCase() !==
+          r.existingTranslation.toLowerCase() && (
+          <div className="mx-5 mb-4 rounded-xl border border-dashed border-[var(--color-accent)] bg-[var(--color-accent-soft)] px-4 py-3">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-accent)] mb-1">
+              Suggested better translation
             </div>
-
-            {/* Column 4: issue type + explanation, flexible remaining width */}
-            <div className="min-w-0">
-              {r.error ? (
-                <span className="text-sm text-[var(--color-incorrect)]">
-                  ⚠ {r.error}
-                </span>
-              ) : (
-                <>
-                  <div className="text-xs font-medium text-[var(--color-ink-soft)] uppercase tracking-wide">
-                    {ISSUE_LABEL[r.issueType]}
-                  </div>
-                  <p className="mt-1 text-sm leading-relaxed">{r.explanation}</p>
-                </>
-              )}
+            <div className="text-lg font-semibold text-[var(--color-accent)]">
+              {r.referenceTranslation}
             </div>
           </div>
+        )}
 
-          {/* Footer row: human-review flag + consistency check result.
-              Always rendered (not conditionally hidden) so the consistency
-              check's outcome is visible on every row, not just some. */}
-          {!r.error && (
-            <div className="mt-3 pt-3 border-t border-dashed border-[var(--color-rule)] flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <div className="px-5 pb-5 space-y-3">
+        {r.error ? (
+          <p className="text-sm text-[var(--color-incorrect)]">{r.error}</p>
+        ) : (
+          <>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-ink-soft)] mb-1">
+                What&apos;s wrong
+              </div>
+              <div className="text-sm font-medium text-[var(--color-ink)]">
+                {ISSUE_LABEL[r.issueType]}
+              </div>
+              <p className="mt-1 text-sm text-[var(--color-ink-soft)] leading-relaxed">
+                {r.explanation}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
               {r.needsHumanReview ? (
-                <span className="font-medium text-[var(--color-weak)] flex items-center gap-1.5">
-                  <span>●</span> Flagged for human review
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-weak-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-weak)]">
+                  Ask a human to check this
                 </span>
               ) : (
-                <span className="text-[var(--color-correct)] flex items-center gap-1.5">
-                  <span>●</span> No review needed
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-correct-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-correct)]">
+                  No human review needed
                 </span>
               )}
               {r.consistentOnRepeat === true && (
-                <span className="text-[var(--color-ink-soft)]">
-                  ✓ Consistent on independent repeat pass
+                <span className="inline-flex items-center rounded-full bg-[var(--color-paper)] px-2.5 py-1 text-xs text-[var(--color-ink-soft)]">
+                  Same answer on re-check
                 </span>
               )}
               {r.consistentOnRepeat === false && (
-                <span className="text-[var(--color-incorrect)] font-medium">
-                  ⚠ Verdict changed on independent repeat pass
+                <span className="inline-flex items-center rounded-full bg-[var(--color-incorrect-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--color-incorrect)]">
+                  Answer changed on re-check
                 </span>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+export function ScoringTable({
+  results,
+  filter,
+}: {
+  results: ScoringResult[];
+  filter?: "all" | "attention";
+}) {
+  const shown =
+    filter === "attention"
+      ? results.filter((r) => r.needsHumanReview || !!r.error)
+      : results;
+
+  if (shown.length === 0) {
+    return (
+      <div className="rounded-2xl border border-[var(--color-rule)] bg-white px-6 py-10 text-center text-sm text-[var(--color-ink-soft)]">
+        Nothing in this filter — all clear.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      {shown.map((r) => (
+        <ScoreCard key={r.key} r={r} />
       ))}
     </div>
   );
